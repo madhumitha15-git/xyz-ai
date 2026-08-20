@@ -184,6 +184,57 @@ function AIAssistant() {
   };
 
   // =====================================================
+  // CLEAN TEXT FOR AI SPEAKER
+  // =====================================================
+
+  const cleanTextForSpeech = (text) => {
+    if (!text) {
+      return "";
+    }
+
+    return text
+      // Remove code blocks
+      .replace(/```[\s\S]*?```/g, "")
+
+      // Remove markdown links but keep link text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+
+      // Remove bold/italic markers
+      .replace(/\*\*/g, "")
+      .replace(/__/g, "")
+      .replace(/\*/g, "")
+
+      // Remove headings
+      .replace(/^#{1,6}\s*/gm, "")
+
+      // Remove inline code markers
+      .replace(/`/g, "")
+
+      // Remove vertical bars
+      .replace(/\|/g, "")
+
+      // Remove underscores
+      .replace(/_/g, "")
+
+      // Remove markdown bullet characters
+      .replace(/^\s*[-+]\s+/gm, "")
+
+      // Remove numbered-list formatting
+      .replace(/^\s*\d+\.\s+/gm, "")
+
+      // Remove common decorative symbols
+      .replace(/[•▪◦▸►]/g, "")
+
+      // Remove excessive punctuation
+      .replace(/([.!?])\1+/g, "$1")
+
+      // Convert multiple spaces/newlines into natural spacing
+      .replace(/\s+/g, " ")
+
+      .trim();
+  };
+
+  // =====================================================
   // AI VOICE RESPONSE
   // =====================================================
 
@@ -192,10 +243,24 @@ function AIAssistant() {
       return;
     }
 
+    const cleanText =
+      cleanTextForSpeech(text);
+
+    if (!cleanText) {
+      return;
+    }
+
+    console.log(
+      "SPEAKING CLEAN TEXT:",
+      cleanText
+    );
+
     window.speechSynthesis.cancel();
 
     const speech =
-      new SpeechSynthesisUtterance(text);
+      new SpeechSynthesisUtterance(
+        cleanText
+      );
 
     speech.lang = "en-IN";
     speech.rate = 0.95;
@@ -347,8 +412,6 @@ function AIAssistant() {
 
         <div className="ai-title">
 
-          {/* AI AVATAR */}
-
           <div
             className={`ai-avatar ${
               avatarActive
@@ -401,12 +464,8 @@ function AIAssistant() {
 
         <div className="chat-messages">
 
-          {/* EMPTY CHAT */}
-
           {messages.length === 0 && (
             <div className="empty-chat">
-
-              {/* LARGE AI AVATAR */}
 
               <div
                 className={`ai-avatar-large ${
