@@ -1,10 +1,10 @@
-```python
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, Attendance
+from app.models import User, Attendance, StudentParent
 from app.security.auth import get_current_user
+from app.ai_service import ask_llm
 
 
 router = APIRouter(
@@ -20,9 +20,9 @@ def ask_ai(
     current_user_id: int = Depends(get_current_user)
 ):
 
-    # ---------------------------------
-    # Get logged-in user
-    # ---------------------------------
+    # =========================================
+    # GET CURRENT USER
+    # =========================================
 
     user = db.query(User).filter(
         User.id == current_user_id
@@ -35,186 +35,331 @@ def ask_ai(
 
     message_lower = message.lower().strip()
 
+    # =========================================
+    # PARENT AI
+    # =========================================
 
-    # ---------------------------------
-    # Student attendance
-    # ---------------------------------
+    if user.role == "parent":
 
-    if "attendance" in message_lower:
+        relationship = db.query(StudentParent).filter(
+            StudentParent.parent_id == current_user_id
+        ).first()
 
-        # Attendance is currently available
-        # only for students
-        if user.role != "student":
+        if not relationship:
+            return {
+                "response": "No child is linked to your account."
+            }
+
+        child = db.query(User).filter(
+            User.id == relationship.student_id,
+            User.role == "student"
+        ).first()
+
+        if not child:
+            return {
+                "response": "Your linked child could not be found."
+            }
+
+        # -----------------------------------------
+        # CHILD ATTENDANCE
+        # -----------------------------------------
+
+        if "attendance" in message_lower:
+
+            records = db.query(Attendance).filter(
+                Attendance.student_id == child.id
+            ).all()
+
+            if not records:
+                return {
+                    "response": (
+                        f"{child.name} currently has no "
+                        "attendance records."
+                    )
+                }
+
+            total_days = len(records)
+
+            present_days = sum(
+                1
+                for record in records
+                if record.status
+                and record.status.lower() == "present"
+            )
+
+            absent_days = total_days - present_days
+
+            percentage = (
+                present_days / total_days
+            ) * 100
+
+            # Attendance improvement question
+            if any(
+                word in message_lower
+                for word in [
+                    "improve",
+                    "increase",
+                    "better",
+                    "low",
+                    "raise"
+                ]
+            ):
+
+                if percentage >= 90:
+                    advice = (
+                        "Their attendance is excellent. "
+                        "Keep maintaining this consistency."
+                    )
+
+                elif percentage >= 75:
+                    advice = (
+                        "Their attendance is good, but there "
+                        "is still room for improvement."
+                    )
+
+                elif percentage >= 60:
+                    advice = (
+                        "Their attendance needs improvement. "
+                        "Encourage regular class attendance."
+                    )
+
+                else:
+                    advice = (
+                        "Their attendance is quite low. "
+                        "Regular attendance should be prioritized."
+                    )
+
+                return {
+                    "response": (
+                        f"{child.name}'s current attendance is "
+                        f"{percentage:.1f}%. "
+                        f"They were present for "
+                        f"{present_days} out of {total_days} days.\n\n"
+                        f"{advice}"
+                    )
+                }
+
             return {
                 "response": (
-                    "Attendance information is "
-                    "currently available for students."
+                    f"{child.name}'s current attendance is "
+                    f"{percentage:.1f}%. "
+                    f"They were present for "
+                    f"{present_days} out of {total_days} days "
+                    f"and absent for {absent_days} days."
                 )
             }
 
-        # Get student's attendance records
-        records = db.query(Attendance).filter(
-            Attendance.student_id == current_user_id
-        ).all()
+        # -----------------------------------------
+        # STUDY QUESTIONS
+        # -----------------------------------------
 
-        # No attendance records
-        if not records:
+        if (
+            "study" in message_lower
+            or "studying" in message_lower
+            or "learn" in message_lower
+            or "exam" in message_lower
+            or "prepare" in message_lower
+        ):
+
             return {
                 "response": (
-                    "You currently have no attendance "
-                    "records."
+                    f"Here are some study suggestions for "
+                    f"{child.name}:\n\n"
+                    "• Create a daily study schedule.\n"
+                    "• Use active recall.\n"
+                    "• Revise lessons regularly.\n"
+                    "• Practice questions instead of only reading.\n"
+                    "• Take short breaks.\n"
+                    "• Spend extra time on difficult topics."
                 )
             }
 
-        # Calculate attendance
-        total_days = len(records)
-
-        present_days = sum(
-            1
-            for record in records
-            if record.status.lower() == "present"
-        )
-
-        absent_days = total_days - present_days
-
-        percentage = (
-            present_days / total_days
-        ) * 100
-
-
-        # ---------------------------------
-        # Attendance improvement advice
-        # ---------------------------------
+        # -----------------------------------------
+        # GREETING
+        # -----------------------------------------
 
         if any(
             word in message_lower
-            for word in [
-                "improve",
-                "increase",
-                "better",
-                "improving",
-                "low",
-                "raise"
-            ]
+            for word in ["hello", "hi", "hey"]
         ):
 
-            if percentage >= 90:
-
-                advice = (
-                    "Your attendance is excellent. "
-                    "Keep maintaining this consistency "
-                    "and avoid unnecessary absences."
+            return {
+                "response": (
+                    f"Hello {user.name}! I'm your XYZ AI "
+                    f"School Assistant. I can help you "
+                    f"monitor {child.name}'s attendance "
+                    "and provide study guidance."
                 )
+            }
 
-            elif percentage >= 75:
+        # -----------------------------------------
+        # GROQ FOR OTHER PARENT QUESTIONS
+        # -----------------------------------------
 
-                advice = (
-                    "Your attendance is good, but there "
-                    "is still room for improvement. Try "
-                    "to attend classes consistently and "
-                    "avoid unnecessary absences."
+        try:
+
+            response = ask_llm(
+                message=message,
+                user_name=user.name,
+                role=user.role
+            )
+
+            return {
+                "response": response
+            }
+
+        except Exception as error:
+
+            print("GROQ ERROR:", error)
+
+            return {
+                "response": (
+                    "I'm currently unable to connect to "
+                    "the AI service. Please try again."
                 )
+            }
 
-            elif percentage >= 60:
+    # =========================================
+    # STUDENT AI
+    # =========================================
 
-                advice = (
-                    "Your attendance needs improvement. "
-                    "Try to attend classes regularly, "
-                    "avoid unnecessary absences, and "
-                    "catch up on any missed lessons."
-                )
+    if user.role == "student":
 
-            else:
+        # -----------------------------------------
+        # ATTENDANCE
+        # -----------------------------------------
 
-                advice = (
-                    "Your attendance is quite low and "
-                    "needs immediate attention. Prioritize "
-                    "regular class attendance, avoid "
-                    "unnecessary absences, and catch up "
-                    "on missed lessons as soon as possible."
-                )
+        if "attendance" in message_lower:
 
+            records = db.query(Attendance).filter(
+                Attendance.student_id == current_user_id
+            ).all()
+
+            if not records:
+                return {
+                    "response": (
+                        "You currently have no "
+                        "attendance records."
+                    )
+                }
+
+            total_days = len(records)
+
+            present_days = sum(
+                1
+                for record in records
+                if record.status
+                and record.status.lower() == "present"
+            )
+
+            absent_days = total_days - present_days
+
+            percentage = (
+                present_days / total_days
+            ) * 100
 
             return {
                 "response": (
                     f"Your current attendance is "
                     f"{percentage:.1f}%. "
                     f"You were present for "
-                    f"{present_days} out of "
-                    f"{total_days} days.\n\n"
-                    f"{advice}"
+                    f"{present_days} out of {total_days} days "
+                    f"and absent for {absent_days} days."
                 )
             }
 
+        # -----------------------------------------
+        # STUDY / EXAM QUESTIONS
+        # -----------------------------------------
 
-        # ---------------------------------
-        # Normal attendance question
-        # ---------------------------------
+        if (
+            "study" in message_lower
+            or "studying" in message_lower
+            or "learn" in message_lower
+            or "exam" in message_lower
+            or "prepare" in message_lower
+        ):
 
-        return {
-            "response": (
-                f"Your current attendance is "
-                f"{percentage:.1f}%. "
-                f"You were present for "
-                f"{present_days} out of "
-                f"{total_days} days and absent for "
-                f"{absent_days} days."
+            try:
+
+                response = ask_llm(
+                    message=message,
+                    user_name=user.name,
+                    role=user.role
+                )
+
+                return {
+                    "response": response
+                }
+
+            except Exception as error:
+
+                print("GROQ ERROR:", error)
+
+                return {
+                    "response": (
+                        "Here are some useful exam preparation tips:\n\n"
+                        "• Make a realistic study timetable.\n"
+                        "• Start with the most important topics.\n"
+                        "• Practice previous questions.\n"
+                        "• Use active recall and spaced revision.\n"
+                        "• Take short breaks while studying.\n"
+                        "• Review difficult topics regularly."
+                    )
+                }
+
+        # -----------------------------------------
+        # GREETING
+        # -----------------------------------------
+
+        if any(
+            word in message_lower
+            for word in ["hello", "hi", "hey"]
+        ):
+
+            return {
+                "response": (
+                    f"Hello {user.name}! "
+                    "I'm your XYZ AI School Assistant. "
+                    "How can I help you?"
+                )
+            }
+
+        # -----------------------------------------
+        # GROQ FOR OTHER STUDENT QUESTIONS
+        # -----------------------------------------
+
+        try:
+
+            response = ask_llm(
+                message=message,
+                user_name=user.name,
+                role=user.role
             )
-        }
 
+            return {
+                "response": response
+            }
 
-    # ---------------------------------
-    # Study tips
-    # ---------------------------------
+        except Exception as error:
 
-    if (
-        "study" in message_lower
-        or "studying" in message_lower
-        or "learn" in message_lower
-    ):
+            print("GROQ ERROR:", error)
 
-        return {
-            "response": (
-                "Here are some useful study tips:\n\n"
-                "• Create a daily study schedule.\n"
-                "• Use active recall to test your memory.\n"
-                "• Revise your lessons regularly.\n"
-                "• Practice questions instead of only reading.\n"
-                "• Take short breaks to stay focused.\n"
-                "• Review difficult topics more frequently."
-            )
-        }
+            return {
+                "response": (
+                    "I'm currently unable to connect to "
+                    "the AI service. Please try again."
+                )
+            }
 
-
-    # ---------------------------------
-    # Greeting
-    # ---------------------------------
-
-    if any(
-        word in message_lower
-        for word in ["hello", "hi", "hey"]
-    ):
-
-        return {
-            "response": (
-                f"Hello {user.name}! "
-                "I'm your XYZ AI School Assistant. "
-                "How can I help you?"
-            )
-        }
-
-
-    # ---------------------------------
-    # Default response
-    # ---------------------------------
+    # =========================================
+    # UNKNOWN ROLE
+    # =========================================
 
     return {
         "response": (
             "I'm your XYZ AI School Assistant. "
-            "I can currently help you with "
-            "attendance information and study tips. "
-            "Try asking me about your attendance "
-            "or how you can improve it."
+            "I can help with attendance, studies, "
+            "and academic guidance."
         )
     }
-```

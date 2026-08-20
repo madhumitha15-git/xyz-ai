@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
@@ -51,7 +52,7 @@ function ParentDashboard() {
 
         setError(
           error.response?.data?.detail ||
-          "Unable to load dashboard."
+            "Unable to load dashboard."
         );
       } finally {
         setLoading(false);
@@ -81,11 +82,14 @@ function ParentDashboard() {
   return (
     <div className="app">
 
-      {/* Sidebar */}
+      {/* =================================================
+          SIDEBAR
+      ================================================= */}
 
       <aside className="sidebar">
 
         <div className="logo">
+
           <div className="logo-icon">
             AI
           </div>
@@ -94,6 +98,7 @@ function ParentDashboard() {
             <h2>XYZ AI</h2>
             <span>School Assistant</span>
           </div>
+
         </div>
 
         <nav>
@@ -134,19 +139,29 @@ function ParentDashboard() {
       </aside>
 
 
-      {/* Main */}
+      {/* =================================================
+          MAIN CONTENT
+      ================================================= */}
 
       <main className="main">
+
+        {/* HEADER */}
 
         <header className="header">
 
           <div>
-            <h1>Parent Dashboard</h1>
+
+            <h1>
+              Parent Dashboard
+            </h1>
 
             <p>
               Welcome back, {user?.name}
             </p>
+
           </div>
+
+          {/* PROFILE */}
 
           <div className="profile">
 
@@ -157,6 +172,7 @@ function ParentDashboard() {
             </div>
 
             <div>
+
               <strong>
                 {user?.name}
               </strong>
@@ -164,6 +180,7 @@ function ParentDashboard() {
               <span>
                 Parent
               </span>
+
             </div>
 
           </div>
@@ -171,7 +188,13 @@ function ParentDashboard() {
         </header>
 
 
+        {/* =================================================
+            CONTENT
+        ================================================= */}
+
         <section className="content">
+
+          {/* ERROR */}
 
           {error && (
             <div className="error-card">
@@ -183,7 +206,9 @@ function ParentDashboard() {
           {!error && child && attendance && (
             <>
 
-              {/* Welcome */}
+              {/* =================================================
+                  WELCOME CARD
+              ================================================= */}
 
               <div className="welcome-card">
 
@@ -194,7 +219,7 @@ function ParentDashboard() {
                   </span>
 
                   <h2>
-                    Welcome, {user.name}!
+                    Welcome, {user?.name}!
                   </h2>
 
                   <p>
@@ -212,14 +237,18 @@ function ParentDashboard() {
               </div>
 
 
-              {/* Child */}
+              {/* =================================================
+                  CHILD CARD
+              ================================================= */}
 
               <div className="child-card">
 
                 <div className="child-avatar">
+
                   {child.name
-                    .charAt(0)
+                    ?.charAt(0)
                     .toUpperCase()}
+
                 </div>
 
                 <div>
@@ -241,7 +270,9 @@ function ParentDashboard() {
               </div>
 
 
-              {/* Statistics */}
+              {/* =================================================
+                  ATTENDANCE STATISTICS
+              ================================================= */}
 
               <h2 className="section-title">
                 Attendance Overview
@@ -336,7 +367,9 @@ function ParentDashboard() {
               </div>
 
 
-              {/* Progress */}
+              {/* =================================================
+                  ATTENDANCE PROGRESS
+              ================================================= */}
 
               <div className="attendance-card">
 
@@ -395,32 +428,58 @@ function ParentDashboard() {
               </div>
 
 
-              {/* AI */}
+              {/* =================================================
+                  AI ASSISTANT
+              ================================================= */}
 
               <div className="ai-card">
 
-                <div className="ai-icon">
-                  ✨
-                </div>
+                {/* CLICKABLE AI AVATAR */}
 
-                <div>
+                <button
+                  type="button"
+                  className="ai-avatar-button"
+                  onClick={() => navigate("/ai")}
+                  title="Open XYZ AI Assistant"
+                >
+
+                  <div className="ai-avatar">
+
+                    <div className="ai-avatar-face">
+                      🤖
+                    </div>
+
+                  </div>
+
+                </button>
+
+
+                {/* AI INFORMATION */}
+
+                <div className="ai-card-content">
+
+                  <span className="ai-badge">
+                    AI ASSISTANT
+                  </span>
 
                   <h2>
                     Ask XYZ AI
                   </h2>
 
                   <p>
-                    Ask questions about
+                    Ask questions about{" "}
                     {child.name}'s attendance
                     and studies.
                   </p>
 
                 </div>
 
+
+                {/* ASK AI BUTTON */}
+
                 <button
-                  onClick={() =>
-                    navigate("/ai")
-                  }
+                  type="button"
+                  onClick={() => navigate("/ai")}
                 >
                   Ask AI
                 </button>
@@ -433,6 +492,23 @@ function ParentDashboard() {
         </section>
 
       </main>
+
+
+      {/* =================================================
+          FLOATING AI AVATAR
+          CLICKING IT OPENS AI ASSISTANT
+      ================================================= */}
+
+      <button
+        type="button"
+        className="floating-ai-avatar"
+        onClick={() => navigate("/ai")}
+        title="Open XYZ AI Assistant"
+      >
+        <span>
+          🤖
+        </span>
+      </button>
 
     </div>
   );

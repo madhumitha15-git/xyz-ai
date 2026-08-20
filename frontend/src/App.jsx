@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AIAssistant from "./pages/AIAssistant";
 import ParentDashboard from "./pages/ParentDashboard";
+import "./App.css";
 
 
 function App() {

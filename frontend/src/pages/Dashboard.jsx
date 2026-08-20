@@ -67,6 +67,7 @@ function Dashboard() {
       <aside className="sidebar">
 
         <div className="logo">
+
           <div className="logo-icon">
             AI
           </div>
@@ -75,6 +76,7 @@ function Dashboard() {
             <h2>XYZ AI</h2>
             <span>School Assistant</span>
           </div>
+
         </div>
 
         <nav>
@@ -118,11 +120,15 @@ function Dashboard() {
         <header className="header">
 
           <div>
-            <h1>Student Dashboard</h1>
+
+            <h1>
+              Student Dashboard
+            </h1>
 
             <p>
               Welcome back, {user?.name}
             </p>
+
           </div>
 
           <div className="profile">
@@ -134,6 +140,7 @@ function Dashboard() {
             </div>
 
             <div>
+
               <strong>
                 {user?.name}
               </strong>
@@ -141,6 +148,7 @@ function Dashboard() {
               <span>
                 Student
               </span>
+
             </div>
 
           </div>
@@ -378,6 +386,33 @@ function Dashboard() {
         </section>
 
       </main>
+
+
+      {/* =================================================
+          FLOATING AI AVATAR
+      ================================================= */}
+
+      <button
+        className="floating-ai-button"
+        onClick={() => navigate("/ai")}
+        title="Open XYZ AI"
+        aria-label="Open XYZ AI"
+      >
+
+        <div className="floating-ai-face">
+
+          <div className="floating-ai-eyes">
+            <span></span>
+            <span></span>
+          </div>
+
+          <div className="floating-ai-mouth">
+            •
+          </div>
+
+        </div>
+
+      </button>
 
     </div>
   );
